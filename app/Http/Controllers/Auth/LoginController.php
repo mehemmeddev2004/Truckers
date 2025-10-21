@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -16,36 +15,58 @@ class LoginController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|min:8'
+        // ✅ Giriş verilerini doğrula
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'min:8'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
-        
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        // ✅ Kullanıcıyı bul
+        $user = User::where('email', $credentials['email'])->first();
+
+        // ✅ Kullanıcı yoksa veya şifre hatalıysa hata fırlat
+        if (!$user) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['No account found for this email address.'],
             ]);
         }
 
-        // Create API token for mobile/external apps
+        // ✅ Bcrypt formatında değilse özel mesaj ver
+        try {
+            if (!Hash::check($credentials['password'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages([
+                'password' => ['This account password is not using bcrypt. Please reset your password.'],
+            ]);
+        }
+
+        // ✅ Eski tokenleri sil (isteğe bağlı güvenlik)
+        $user->tokens()->delete();
+
+        // ✅ Yeni token oluştur
         $token = $user->createToken('auth-token')->plainTextToken;
 
+        // ✅ Başarılı yanıt döndür
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
-            'token' => $token
-        ], 200);
+            'token' => $token,
+        ]);
     }
-public function logout(Request $request)
-{
-    $request->user()->tokens()->delete();
 
-    return response()->json([
-        'message' => 'Logged out from all devices successfully'
-    ], 200);
-}
+    /**
+     * Handle logout request
+     */
+    public function logout(Request $request)
+    {
+        $request->user()->tokens()->delete();
 
-
+        return response()->json([
+            'message' => 'Logged out from all devices successfully',
+        ]);
+    }
 }
