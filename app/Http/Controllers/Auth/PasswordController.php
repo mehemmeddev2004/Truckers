@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Auth\ForgetPassword;
+namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
-class ForgetPasswordController extends Controller
+class PasswordController extends Controller
 {
     /**
      * Send password reset link to user's email
